@@ -1,0 +1,6 @@
+{
+  "name": "Cecil's Pub Manager",
+  "description": "AI-powered tavern operations assistant for Cecil's Pub in Tembisa. Powered by CoreIQ.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
