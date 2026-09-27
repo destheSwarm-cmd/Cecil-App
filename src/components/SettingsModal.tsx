@@ -45,11 +45,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [isCompressingPhoto, setIsCompressingPhoto] = useState<boolean>(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [showPhotoSheet, setShowPhotoSheet] = useState<boolean>(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // ADD 1: Handle Pub Photo upload & compression
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     setIsCompressingPhoto(true);
@@ -62,6 +65,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } finally {
       setIsCompressingPhoto(false);
     }
+  };
+
+  const handleTakePhoto = () => {
+    setShowPhotoSheet(false);
+    cameraInputRef.current?.click();
+  };
+
+  const handleChooseGallery = () => {
+    setShowPhotoSheet(false);
+    galleryInputRef.current?.click();
   };
 
   // Send Test Transactional Report Email via /api/email/report
@@ -200,11 +213,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
                 Pub Photo (Home Banner &amp; AI Avatar)
               </label>
+
+              {/* Hidden inputs: Camera (with capture) & Gallery (without capture) */}
               <input
                 type="file"
-                ref={photoInputRef}
+                ref={cameraInputRef}
                 accept="image/*"
                 capture="environment"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+              <input
+                type="file"
+                ref={galleryInputRef}
+                accept="image/*"
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
@@ -228,9 +250,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex-1">
                   <button
                     type="button"
-                    onClick={() => photoInputRef.current?.click()}
+                    onClick={() => setShowPhotoSheet(true)}
                     disabled={isCompressingPhoto}
-                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 active:scale-[0.97] transition-all"
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 active:scale-[0.97] transition-all cursor-pointer border border-slate-200"
                   >
                     <Camera className="w-4 h-4 text-[#0F6E56]" />
                     <span>{formData.venue_photo ? 'Change Photo' : 'Upload Pub Photo'}</span>
@@ -238,7 +260,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <p className="text-[10px] text-slate-400 mt-1">
                     {isCompressingPhoto
                       ? 'Compressing for fast 3G loading...'
-                      : 'Appears as Home banner & AI chat avatar.'}
+                      : 'Choose Camera or Gallery for banner & AI avatar.'}
                   </p>
                 </div>
               </div>
@@ -435,6 +457,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Pub Photo Source Selector Bottom Sheet */}
+      {showPhotoSheet && (
+        <div className="fixed inset-0 z-70 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div
+            className="fixed inset-0"
+            onClick={() => setShowPhotoSheet(false)}
+          />
+          <div className="relative w-full max-w-sm bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl border border-slate-100 z-10 animate-slideUp">
+            <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-4 sm:hidden" />
+            
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Pub Photo</h3>
+                <p className="text-[11px] text-slate-500">
+                  Select photo source for tavern banner
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhotoSheet(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {/* Option 1: Take Photo */}
+              <button
+                type="button"
+                onClick={handleTakePhoto}
+                className="w-full py-3 px-4 rounded-xl bg-[#0F6E56] hover:bg-[#0A4A35] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-sm active:scale-[0.97] transition-all cursor-pointer"
+              >
+                <Camera className="w-5 h-5 text-emerald-200" />
+                <span>📷 Take Photo</span>
+              </button>
+
+              {/* Option 2: Choose from Gallery */}
+              <button
+                type="button"
+                onClick={handleChooseGallery}
+                className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm flex items-center justify-center gap-2.5 active:scale-[0.97] transition-all cursor-pointer border border-slate-200"
+              >
+                <ImageIcon className="w-5 h-5 text-[#0F6E56]" />
+                <span>🖼️ Choose from Gallery</span>
+              </button>
+
+              {/* Remove Photo if one exists */}
+              {formData.venue_photo && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData((prev) => ({ ...prev, venue_photo: undefined }));
+                    setShowPhotoSheet(false);
+                  }}
+                  className="w-full py-2 text-rose-600 hover:text-rose-700 text-xs font-semibold text-center cursor-pointer"
+                >
+                  Remove Current Photo
+                </button>
+              )}
+
+              {/* Cancel Button */}
+              <button
+                type="button"
+                onClick={() => setShowPhotoSheet(false)}
+                className="w-full py-2.5 text-slate-500 hover:text-slate-800 text-xs font-semibold text-center cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

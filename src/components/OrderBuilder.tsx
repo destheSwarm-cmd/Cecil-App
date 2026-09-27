@@ -91,7 +91,14 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
     onUpdateOrderStatus(order.id, 'sent', items);
     triggerSuccessBurst();
 
-    window.open(waUrl, '_blank');
+    // Safely trigger WhatsApp navigation without window.open in iframe
+    const link = document.createElement('a');
+    link.href = waUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (

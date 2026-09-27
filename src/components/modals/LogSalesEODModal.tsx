@@ -9,6 +9,7 @@ import {
   Plus,
   Trash2,
   Receipt,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { formatRand } from '../../lib/format';
 import { Product } from '../../types/pub';
@@ -35,7 +36,8 @@ export const LogSalesEODModal: React.FC<LogSalesEODModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'photo' | 'manual'>('photo');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -75,6 +77,7 @@ export const LogSalesEODModal: React.FC<LogSalesEODModalProps> = ({
   // Handle Photo selection and trigger Gemini Vision AI
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     const reader = new FileReader();
@@ -239,48 +242,98 @@ export const LogSalesEODModal: React.FC<LogSalesEODModalProps> = ({
             {/* Photo Capture Section */}
             {activeTab === 'photo' && (
               <div className="space-y-3">
+                {/* Hidden inputs: Camera (with capture) & Gallery (without capture) */}
                 <input
                   type="file"
-                  ref={fileInputRef}
+                  ref={cameraInputRef}
                   accept="image/*"
                   capture="environment"
                   className="hidden"
                   onChange={handlePhotoSelect}
                 />
+                <input
+                  type="file"
+                  ref={galleryInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                />
 
                 {!imagePreview ? (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-32 border-2 border-dashed border-slate-300 hover:border-[#1D9E75] rounded-2xl flex flex-col items-center justify-center bg-slate-50/80 hover:bg-emerald-50/40 transition-colors p-4 cursor-pointer text-center"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#0F6E56] flex items-center justify-center mb-2">
-                      <Camera className="w-6 h-6" />
+                  <div className="border-2 border-dashed border-slate-300 hover:border-[#1D9E75] rounded-2xl p-4 bg-slate-50/80 transition-colors text-center">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="w-full flex flex-col items-center justify-center cursor-pointer group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#0F6E56] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-2xs">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <span className="text-sm font-bold text-slate-800">
+                        Capture Till / POS Screen
+                      </span>
+                      <span className="text-xs text-slate-500 mt-0.5 max-w-xs mx-auto">
+                        Default to live camera — CoreIQ Vision reads totals automatically
+                      </span>
+                    </button>
+
+                    {/* Two-option buttons: 📷 Take Photo (default) & 🖼️ Choose from Gallery */}
+                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/80">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="py-2.5 px-3 rounded-xl bg-[#0A4A35] hover:bg-[#073627] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.97] transition-all cursor-pointer"
+                      >
+                        <Camera className="w-4 h-4 text-emerald-300" />
+                        <span>📷 Take Photo</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 border border-slate-300 active:scale-[0.97] transition-all cursor-pointer"
+                      >
+                        <ImageIcon className="w-4 h-4 text-[#0F6E56]" />
+                        <span>🖼️ From Gallery</span>
+                      </button>
                     </div>
-                    <span className="text-sm font-bold text-slate-800">
-                      Take Photo of Till / POS Screen
-                    </span>
-                    <span className="text-xs text-slate-500 mt-0.5">
-                      CoreIQ AI Vision reads totals and bottles automatically
-                    </span>
-                  </button>
+                  </div>
                 ) : (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-black max-h-40 flex items-center justify-center">
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-black max-h-44 flex items-center justify-center">
                     <img
                       src={imagePreview}
                       alt="POS Screen"
-                      className="max-h-40 w-auto object-contain opacity-85"
+                      className="max-h-44 w-auto object-contain opacity-85"
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImagePreview(null);
-                        setExtractionNote(null);
-                      }}
-                      className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white hover:bg-black"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        title="Retake with camera"
+                        className="p-1.5 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        title="Choose another from gallery"
+                        className="p-1.5 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setExtractionNote(null);
+                        }}
+                        title="Remove photo"
+                        className="p-1.5 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                     {isAnalyzing && (
                       <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white">
                         <Sparkles className="w-6 h-6 text-[#EF9F27] animate-spin mb-1" />
