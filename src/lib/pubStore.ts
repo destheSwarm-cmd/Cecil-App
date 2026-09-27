@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS: PubSettings = {
   notify_order_day: true,
   notify_shrinkage: true,
   weekly_email_report: true,
+  venue_photo: '/venue_default.jpg',
 };
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -356,7 +357,15 @@ export function usePubStore() {
   const [settings, setSettings] = useState<PubSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          venue_photo: parsed.venue_photo || '/venue_default.jpg',
+        };
+      }
+      return DEFAULT_SETTINGS;
     } catch {
       return DEFAULT_SETTINGS;
     }

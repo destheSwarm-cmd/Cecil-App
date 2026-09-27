@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   X,
   Building,
@@ -12,10 +12,13 @@ import {
   TrendingUp,
   Send,
   Trash2,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { PubSettings, Product } from '../types/pub';
 import { formatRand } from '../lib/format';
 import { triggerSuccessBurst } from '../lib/celebrate';
+import { compressImageFile } from '../lib/imageCompressor';
 
 interface SettingsModalProps {
   settings: PubSettings;
@@ -41,6 +44,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [isCompressingPhoto, setIsCompressingPhoto] = useState<boolean>(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // ADD 1: Handle Pub Photo upload & compression
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressingPhoto(true);
+    try {
+      const compressedDataUrl = await compressImageFile(file);
+      setFormData((prev) => ({ ...prev, venue_photo: compressedDataUrl }));
+      triggerSuccessBurst();
+    } catch (err) {
+      console.error('Failed to compress image:', err);
+    } finally {
+      setIsCompressingPhoto(false);
+    }
+  };
 
   // Send Test Transactional Report Email via /api/email/report
   const handleSendTestEmail = async (type: 'weekly' | 'welcome') => {
@@ -171,6 +193,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 }
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
               />
+            </div>
+
+            {/* ADD 1: Pub Photo Upload */}
+            <div className="pt-1">
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                Pub Photo (Home Banner &amp; AI Avatar)
+              </label>
+              <input
+                type="file"
+                ref={photoInputRef}
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+
+              <div className="flex items-center gap-3">
+                {formData.venue_photo ? (
+                  <div className="relative w-24 h-16 rounded-xl overflow-hidden border border-slate-300 shadow-2xs shrink-0 bg-slate-100">
+                    <img
+                      src={formData.venue_photo}
+                      alt="Cecil's Pub"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-24 h-16 rounded-xl bg-emerald-100 text-[#0F6E56] flex flex-col items-center justify-center shrink-0 border border-emerald-200">
+                    <ImageIcon className="w-5 h-5" />
+                    <span className="text-[9px] font-bold mt-0.5">No Photo</span>
+                  </div>
+                )}
+
+                <div className="flex-1">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isCompressingPhoto}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 active:scale-[0.97] transition-all"
+                  >
+                    <Camera className="w-4 h-4 text-[#0F6E56]" />
+                    <span>{formData.venue_photo ? 'Change Photo' : 'Upload Pub Photo'}</span>
+                  </button>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {isCompressingPhoto
+                      ? 'Compressing for fast 3G loading...'
+                      : 'Appears as Home banner & AI chat avatar.'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 

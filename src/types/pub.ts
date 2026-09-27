@@ -108,6 +108,20 @@ export interface PubSettings {
   notify_order_day: boolean;
   notify_shrinkage: boolean;
   weekly_email_report: boolean;
+  venue_photo?: string; // ADD 1: Tavern photo for Home Header & AI avatar
+}
+
+export interface MatchFixture {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  dateStr: string;
+  timeStr: string;
+  dateTimeIso: string;
+  venue: string;
+  isDerby?: boolean;
+  derbyBadge?: string;
+  showingHere: boolean;
 }
 
 export interface Discrepancy {

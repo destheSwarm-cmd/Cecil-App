@@ -221,6 +221,10 @@ function generateLocalPubResponse(query: string, context: any): string {
     return `All clean, Cecil! No unaccounted stock missing between your floor picks and the POS sales today. Everything tallies 100% ✅.`;
   }
 
+  if (q.includes('match') || q.includes('derby') || q.includes('chiefs') || q.includes('pirates') || q.includes('game') || q.includes('soccer') || q.includes('fixture')) {
+    return `Next big match is Kaizer Chiefs vs Stellenbosch FC on 17 Oct at 17:30! And the massive SOWETO DERBY (Orlando Pirates vs Kaizer Chiefs) is on 31 Oct at 17:30 at Orlando Stadium. Both are marked 'Showing Here 🏟️' at Cecil's Pub. Seats fill up fast, so stock up on Castle and Black Label!`;
+  }
+
   if (q.includes('sale') || q.includes('till') || q.includes('money')) {
     return `Today's till is standing at R ${Number(todaySales).toFixed(2).replace('.', ',')}. Castle and Black Label are pulling the most volume. Lekker trade so far!`;
   }

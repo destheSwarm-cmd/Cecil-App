@@ -5,7 +5,7 @@ import {
   CheckCheck,
   Beer,
 } from 'lucide-react';
-import { AIMessage, Product, Discrepancy, Order } from '../types/pub';
+import { AIMessage, Product, Discrepancy, Order, MatchFixture } from '../types/pub';
 import { formatRand, formatTime } from '../lib/format';
 
 interface AIAssistantProps {
@@ -14,6 +14,8 @@ interface AIAssistantProps {
   todaySalesTotal: number;
   discrepancies: Discrepancy[];
   orders: Order[];
+  venuePhoto?: string;
+  matches?: MatchFixture[];
   onSendMessage: (role: 'user' | 'assistant', content: string) => void;
 }
 
@@ -32,6 +34,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   todaySalesTotal,
   discrepancies,
   orders,
+  venuePhoto,
+  matches = [],
   onSendMessage,
 }) => {
   const [inputText, setInputText] = useState<string>('');
@@ -77,7 +81,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     setIsTyping(true);
 
     try {
-      // Build live pub context to supply to server Gemini 3.8-flash
+      // Build live pub context to supply to server Gemini 3.8-flash (including Match Days)
       const liveContext = {
         todaySales: todaySalesTotal,
         discrepancies: discrepancies.map((d) => ({
@@ -101,6 +105,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
             cases: i.ordered_cases,
             reason: i.reason,
           })),
+        })),
+        nextMatches: matches.map((m) => ({
+          fixture: `${m.homeTeam} vs ${m.awayTeam}`,
+          date: m.dateStr,
+          kickoff: m.timeStr,
+          venue: m.venue,
+          showingHere: m.showingHere,
+          isDerby: m.isDerby,
         })),
       };
 
@@ -130,12 +142,20 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] bg-[#EFEAE2] rounded-3xl shadow-sm border border-slate-300/80 overflow-hidden animate-fadeIn">
-      {/* WhatsApp Styled Chat Header */}
+      {/* WhatsApp Styled Chat Header with ADD 1 Venue Photo Avatar */}
       <div className="bg-[#075E54] text-white px-4 py-3 flex items-center justify-between select-none shadow-sm">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-[#128C7E] flex items-center justify-center font-bold text-base shadow-sm border border-white/20">
-              <Beer className="w-5 h-5 text-amber-200" />
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-[#128C7E] flex items-center justify-center font-bold text-base shadow-sm border border-white/20">
+              {venuePhoto ? (
+                <img
+                  src={venuePhoto}
+                  alt="Cecil's Pub"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Beer className="w-5 h-5 text-amber-200" />
+              )}
             </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#075E54]" />
           </div>

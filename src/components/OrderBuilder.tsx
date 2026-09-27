@@ -11,17 +11,20 @@ import {
 } from 'lucide-react';
 import { Order, OrderItem, PubSettings, Supplier } from '../types/pub';
 import { triggerSuccessBurst } from '../lib/celebrate';
+import { BarChart3 } from 'lucide-react';
 
 interface OrderBuilderProps {
   orders: Order[];
   settings: PubSettings;
   onUpdateOrderStatus: (orderId: string, status: 'draft' | 'sent', items?: OrderItem[]) => void;
+  onOpenSalesInsights?: () => void;
 }
 
 export const OrderBuilder: React.FC<OrderBuilderProps> = ({
   orders,
   settings,
   onUpdateOrderStatus,
+  onOpenSalesInsights,
 }) => {
   const [activeSupplierTab, setActiveSupplierTab] = useState<Supplier>('SAB');
   const [editingOrders, setEditingOrders] = useState<Record<string, OrderItem[]>>(() => {
@@ -104,9 +107,22 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
           </p>
         </div>
 
-        <div className="px-2.5 py-1 rounded-full bg-emerald-50 text-[#0A4A35] border border-emerald-200 text-xs font-bold flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5 text-[#EF9F27]" />
-          <span>CoreIQ Restock Math</span>
+        <div className="flex items-center gap-2">
+          {onOpenSalesInsights && (
+            <button
+              type="button"
+              onClick={onOpenSalesInsights}
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-bold flex items-center gap-1 active:scale-[0.97] transition-all shadow-2xs cursor-pointer"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-[#0F6E56]" />
+              <span>📊 Insights</span>
+            </button>
+          )}
+
+          <div className="px-2.5 py-1 rounded-full bg-emerald-50 text-[#0A4A35] border border-emerald-200 text-xs font-bold flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-[#EF9F27]" />
+            <span>CoreIQ Math</span>
+          </div>
         </div>
       </div>
 

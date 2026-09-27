@@ -11,7 +11,11 @@ import { SettingsModal } from './components/SettingsModal';
 import { HelperPINModal } from './components/modals/HelperPINModal';
 import { QuickSaleModal } from './components/modals/QuickSaleModal';
 import { LogSalesEODModal } from './components/modals/LogSalesEODModal';
+import { SalesInsightsModal } from './components/SalesInsightsModal';
+import { MatchDaysModal } from './components/MatchDaysModal';
 import { usePubStore } from './lib/pubStore';
+import { getStoredMatches, saveStoredMatches } from './lib/matchFixtures';
+import { MatchFixture } from './types/pub';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
@@ -20,6 +24,16 @@ export default function App() {
   const [showHelperPINModal, setShowHelperPINModal] = useState<boolean>(false);
   const [showQuickSaleModal, setShowQuickSaleModal] = useState<boolean>(false);
   const [showEODModal, setShowEODModal] = useState<boolean>(false);
+  const [showSalesInsightsModal, setShowSalesInsightsModal] = useState<boolean>(false);
+  const [showMatchDaysModal, setShowMatchDaysModal] = useState<boolean>(false);
+
+  // ADD 3: Match Days fixtures state
+  const [matches, setMatches] = useState<MatchFixture[]>(() => getStoredMatches());
+
+  const handleUpdateMatches = (updated: MatchFixture[]) => {
+    setMatches(updated);
+    saveStoredMatches(updated);
+  };
 
   const {
     products,
@@ -79,11 +93,12 @@ export default function App() {
                 onExitHelperMode={() => setShowHelperPINModal(true)}
               />
             ) : (
-              /* Owner Full Experience Tabs */
+              /* Owner Full Experience Tabs (Preserving exact 4 tabs: Home, Stock, Orders, AI) */
               <>
                 {activeTab === 'home' && (
                   <HomeDashboard
                     ownerName={settings.owner_name}
+                    venuePhoto={settings.venue_photo}
                     todayTillTotal={todayTotalRand}
                     todaySalesCount={todaySalesCount}
                     warehouseCases={totalWarehouseCases}
@@ -91,8 +106,11 @@ export default function App() {
                     lowStockCount={lowStockCount}
                     discrepancies={discrepancies}
                     draftOrders={draftOrders}
+                    matches={matches}
                     onOpenQuickSale={() => setShowQuickSaleModal(true)}
                     onOpenEOD={() => setShowEODModal(true)}
+                    onOpenSalesInsights={() => setShowSalesInsightsModal(true)}
+                    onOpenMatchDays={() => setShowMatchDaysModal(true)}
                     onNavigateToStock={() => setActiveTab('stock')}
                     onNavigateToOrders={() => setActiveTab('orders')}
                     onNavigateToAI={() => setActiveTab('ai')}
@@ -121,6 +139,7 @@ export default function App() {
                     orders={orders}
                     settings={settings}
                     onUpdateOrderStatus={updateOrderStatus}
+                    onOpenSalesInsights={() => setShowSalesInsightsModal(true)}
                   />
                 )}
 
@@ -131,6 +150,8 @@ export default function App() {
                     todaySalesTotal={todayTotalRand}
                     discrepancies={discrepancies}
                     orders={orders}
+                    venuePhoto={settings.venue_photo}
+                    matches={matches}
                     onSendMessage={addAIMessage}
                   />
                 )}
@@ -138,7 +159,7 @@ export default function App() {
             )}
           </main>
 
-          {/* Bottom Navigation (Hidden in Helper Mode to keep screen ultra-simple) */}
+          {/* Bottom Navigation (Strictly 4 tabs: Home | Stock | Orders | AI) */}
           {!isHelperMode && (
             <BottomNav
               activeTab={activeTab}
@@ -179,6 +200,23 @@ export default function App() {
             isHelperMode={isHelperMode}
             onClose={() => setShowHelperPINModal(false)}
             onSubmitPIN={toggleHelperMode}
+          />
+
+          {/* ADD 2: Sales Insights Screen Modal */}
+          <SalesInsightsModal
+            isOpen={showSalesInsightsModal}
+            onClose={() => setShowSalesInsightsModal(false)}
+            sales={sales}
+            products={products}
+          />
+
+          {/* ADD 3: Match Days Screen Modal */}
+          <MatchDaysModal
+            isOpen={showMatchDaysModal}
+            onClose={() => setShowMatchDaysModal(false)}
+            matches={matches}
+            onUpdateMatches={handleUpdateMatches}
+            tavernAddress={settings.address}
           />
         </>
       )}
