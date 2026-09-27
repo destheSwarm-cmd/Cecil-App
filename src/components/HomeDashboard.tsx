@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { formatRand, getTimeOfDayGreeting } from '../lib/format';
 import { Discrepancy, Order } from '../types/pub';
+import { AnimatedNumber } from './AnimatedNumber';
 
 interface HomeDashboardProps {
   ownerName: string;
@@ -48,32 +49,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 }) => {
   const { greeting, icon } = getTimeOfDayGreeting(ownerName);
 
-  // Animated till number counting UP
-  const [displayedTotal, setDisplayedTotal] = useState<number>(0);
-
-  useEffect(() => {
-    let start = 0;
-    const duration = 750; // ms
-    const startTime = performance.now();
-
-    const animateCount = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // easeOutExpo
-      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      const currentVal = start + (todayTillTotal - start) * ease;
-      setDisplayedTotal(currentVal);
-
-      if (progress < 1) {
-        requestAnimationFrame(animateCount);
-      } else {
-        setDisplayedTotal(todayTillTotal);
-      }
-    };
-
-    requestAnimationFrame(animateCount);
-  }, [todayTillTotal]);
-
   // Next order day calculation (SAB orders typically Sunday for Monday delivery)
   const todayDay = new Date().getDay(); // 0 is Sunday
   const daysUntilSunday = todayDay === 0 ? 0 : 7 - todayDay;
@@ -100,7 +75,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </div>
 
       {/* HERO CARD (#111F1A with ambient diagonal shimmer) */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#111F1A] text-white p-5 shadow-lg border border-emerald-950/80 hero-shimmer">
+      <div className="relative overflow-hidden rounded-3xl bg-[#111F1A] text-white p-5 shadow-lg border border-emerald-950/80 hero-shimmer">
         {/* Glow ambient background sphere */}
         <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-[#1D9E75]/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full bg-[#EF9F27]/10 blur-2xl pointer-events-none" />
@@ -117,9 +92,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
           </div>
 
-          {/* Hero Counter Number (42px bold) */}
+          {/* P1: Hero Counter Number (600ms animated count up) */}
           <div className="text-[40px] sm:text-[42px] font-extrabold tracking-tight text-white font-mono leading-none my-2">
-            {formatRand(displayedTotal)}
+            <AnimatedNumber
+              value={todayTillTotal}
+              duration={600}
+              formatter={(val) => formatRand(val)}
+            />
           </div>
 
           {/* Subtext info */}
@@ -127,11 +106,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             Real-time tavern sales &amp; till collections
           </p>
 
-          {/* Action Buttons: Big Amber Quick Sale + Outlined End of Day */}
+          {/* Action Buttons: Big Amber Quick Sale + Outlined End of Day (P3: active:scale-[0.97]) */}
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button
               onClick={onOpenQuickSale}
-              className="h-12 rounded-xl bg-[#EF9F27] hover:bg-[#e0921f] text-[#111F1A] font-bold text-[15px] flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all cursor-pointer"
+              className="h-12 rounded-xl bg-[#EF9F27] hover:bg-[#e0921f] text-[#111F1A] font-bold text-[15px] flex items-center justify-center gap-2 shadow-md active:scale-[0.97] transition-transform duration-150 cursor-pointer"
             >
               <Zap className="w-4 h-4 fill-[#111F1A]" />
               <span>Quick Sale</span>
@@ -139,7 +118,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             <button
               onClick={onOpenEOD}
-              className="h-12 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-[15px] border border-white/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer backdrop-blur-sm"
+              className="h-12 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-[15px] border border-white/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-150 cursor-pointer backdrop-blur-sm"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
               <span>End of Day</span>
@@ -149,8 +128,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       </div>
 
       {/* POSITIVE REINFORCEMENT WEEKLY STREAK LINE */}
-      <div className="bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 rounded-xl p-3 border border-emerald-200/80 shadow-2xs flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-[#0F6E56] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 rounded-2xl p-3.5 border border-emerald-200/80 shadow-2xs flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-[#0F6E56] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
           5d
         </div>
         <div className="flex-1 min-w-0">
@@ -163,12 +142,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
-      {/* LIVE TILES: Warehouse / Floor / Low-stock */}
+      {/* LIVE TILES: Warehouse / Floor / Low-stock with P1 600ms smooth count up & P3 press */}
       <div className="grid grid-cols-3 gap-2.5">
         {/* Warehouse Tile */}
         <button
           onClick={onNavigateToStock}
-          className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200/80 text-left hover:border-emerald-300 transition-all active:scale-[0.98] cursor-pointer group"
+          className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200/80 text-left hover:border-emerald-300 transition-all active:scale-[0.97] duration-150 cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
@@ -176,8 +155,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
             <Boxes className="w-4 h-4 text-[#0F6E56] group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-2xl font-bold text-[#111810] tracking-tight">
-            {warehouseCases}
+          <div className="text-2xl font-bold text-[#111810] tracking-tight font-mono">
+            <AnimatedNumber value={warehouseCases} duration={600} />
           </div>
           <div className="text-[11px] text-[#4A5C50] font-medium">cases stored</div>
         </button>
@@ -185,7 +164,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* Floor Tile */}
         <button
           onClick={onNavigateToStock}
-          className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200/80 text-left hover:border-emerald-300 transition-all active:scale-[0.98] cursor-pointer group"
+          className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200/80 text-left hover:border-emerald-300 transition-all active:scale-[0.97] duration-150 cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
@@ -193,8 +172,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </span>
             <Package className="w-4 h-4 text-[#1D9E75] group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-2xl font-bold text-[#111810] tracking-tight">
-            {floorBottles}
+          <div className="text-2xl font-bold text-[#111810] tracking-tight font-mono">
+            <AnimatedNumber value={floorBottles} duration={600} />
           </div>
           <div className="text-[11px] text-[#4A5C50] font-medium">cold units</div>
         </button>
@@ -202,7 +181,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* Low Stock Alert Tile */}
         <button
           onClick={onNavigateToStock}
-          className={`rounded-xl p-3.5 shadow-sm border text-left transition-all active:scale-[0.98] cursor-pointer group ${
+          className={`rounded-2xl p-3.5 shadow-sm border text-left transition-all active:scale-[0.97] duration-150 cursor-pointer group ${
             lowStockCount > 0
               ? 'bg-rose-50/80 border-rose-200 hover:border-rose-400'
               : 'bg-white border-slate-200/80 hover:border-emerald-300'
@@ -223,11 +202,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             />
           </div>
           <div
-            className={`text-2xl font-bold tracking-tight ${
+            className={`text-2xl font-bold tracking-tight font-mono ${
               lowStockCount > 0 ? 'text-[#E24B4A]' : 'text-[#111810]'
             }`}
           >
-            {lowStockCount}
+            <AnimatedNumber value={lowStockCount} duration={600} />
           </div>
           <div
             className={`text-[11px] font-medium ${
@@ -239,9 +218,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </button>
       </div>
 
-      {/* DISCREPANCY ALERT CARD (Shrinkage Detected) */}
+      {/* DISCREPANCY ALERT CARD (F3: Timestamp Consistency) */}
       {discrepancies.length > 0 && (
-        <div className="rounded-xl bg-amber-50/90 border border-amber-300/80 p-3.5 shadow-2xs">
+        <div className="rounded-2xl bg-amber-50/90 border border-amber-300/80 p-3.5 shadow-2xs">
           <div className="flex items-start gap-2.5">
             <div className="p-2 rounded-lg bg-amber-500/20 text-amber-900 shrink-0">
               <ShieldAlert className="w-5 h-5 text-amber-700" />
@@ -264,13 +243,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </p>
               <div className="mt-2 text-[11px] text-amber-800/90 flex items-center justify-between">
                 <span>
-                  Last pick by {discrepancies[0].last_picked_by} • {discrepancies[0].last_pick_time}
+                  Last pick by {discrepancies[0].last_picked_by} at {discrepancies[0].last_pick_time}
                 </span>
                 <button
                   onClick={onNavigateToStock}
-                  className="font-bold text-amber-950 underline hover:text-amber-800 ml-2"
+                  className="font-bold text-amber-950 underline hover:text-amber-800 ml-2 cursor-pointer active:scale-[0.97]"
                 >
-                  Inspect &rarr;
+                  Verify &rarr;
                 </button>
               </div>
             </div>
@@ -279,7 +258,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       )}
 
       {/* DAYS UNTIL ORDER DAY CARD */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-between">
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#0F6E56] flex items-center justify-center border border-emerald-100">
             <Calendar className="w-5 h-5" />
@@ -305,7 +284,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         <button
           onClick={onNavigateToOrders}
-          className="p-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0A4A35] transition-colors"
+          className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#0A4A35] transition-all active:scale-[0.97] cursor-pointer"
           title="View draft orders"
         >
           <ArrowRight className="w-4 h-4" />
@@ -315,7 +294,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* ASK AI QUICK TEASER BANNER */}
       <div
         onClick={onNavigateToAI}
-        className="rounded-xl bg-gradient-to-r from-[#0A4A35] to-[#0F6E56] text-white p-3.5 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform"
+        className="rounded-2xl bg-gradient-to-r from-[#0A4A35] to-[#0F6E56] text-white p-3.5 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform duration-150"
       >
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">

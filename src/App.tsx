@@ -44,6 +44,7 @@ export default function App() {
     saveProduct,
     bulkPriceUpdate,
     resolveDiscrepancy,
+    verifyAndReconcileShrinkage,
     addAIMessage,
     updateOrderStatus,
     toggleHelperMode,
@@ -111,6 +112,7 @@ export default function App() {
                     onLogEODSale={logEODSale}
                     onSaveProduct={saveProduct}
                     onResolveDiscrepancy={resolveDiscrepancy}
+                    onVerifyAndReconcileShrinkage={verifyAndReconcileShrinkage}
                   />
                 )}
 

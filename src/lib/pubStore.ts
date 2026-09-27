@@ -161,6 +161,15 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
 ];
 
+const getDeviceTimeString = (minutesAgo: number = 35): string => {
+  const d = new Date(Date.now() - minutesAgo * 60 * 1000);
+  return d.toLocaleTimeString('en-ZA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
 const INITIAL_DISCREPANCIES: Discrepancy[] = [
   {
     id: 'disc-1',
@@ -170,7 +179,7 @@ const INITIAL_DISCREPANCIES: Discrepancy[] = [
     expected_floor: 22,
     actual_floor: 18,
     last_picked_by: 'Helper',
-    last_pick_time: 'Today • 14:30',
+    last_pick_time: getDeviceTimeString(35),
     severity: 'warning',
   },
 ];
@@ -656,6 +665,30 @@ export function usePubStore() {
     setDiscrepancies((prev) => prev.filter((d) => d.id !== id));
   };
 
+  // F5: Shrinkage Verification - Reconcile actual counted floor units & clear alert
+  const verifyAndReconcileShrinkage = (discrepancyId: string, actualFloorUnits: number) => {
+    const disc = discrepancies.find((d) => d.id === discrepancyId);
+    if (disc) {
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === disc.product_id
+            ? {
+                ...p,
+                floor_stock: actualFloorUnits,
+                stock_confidence: 'exact',
+              }
+            : p
+        )
+      );
+      queueSync('product_update', {
+        productId: disc.product_id,
+        floor_stock: actualFloorUnits,
+        discrepancyId,
+      });
+    }
+    setDiscrepancies((prev) => prev.filter((d) => d.id !== discrepancyId));
+  };
+
   // Add AI chat message
   const addAIMessage = (role: 'user' | 'assistant', content: string) => {
     const msg: AIMessage = {
@@ -734,6 +767,7 @@ export function usePubStore() {
     saveProduct,
     bulkPriceUpdate,
     resolveDiscrepancy,
+    verifyAndReconcileShrinkage,
     addAIMessage,
     updateOrderStatus,
     toggleHelperMode,

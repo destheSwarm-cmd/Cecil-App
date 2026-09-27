@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import {
-  ShoppingCart,
   MessageCircle,
   PhoneCall,
   Plus,
   Minus,
-  CheckCircle2,
-  Calendar,
   Sparkles,
   Truck,
-  Send,
+  Check,
+  Calendar,
 } from 'lucide-react';
 import { Order, OrderItem, PubSettings, Supplier } from '../types/pub';
-import { formatRand } from '../lib/format';
 import { triggerSuccessBurst } from '../lib/celebrate';
 
 interface OrderBuilderProps {
@@ -35,6 +32,8 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
     return map;
   });
 
+  const [sentTimestamps, setSentTimestamps] = useState<Record<string, string>>({});
+
   const activeOrder = orders.find((o) => o.supplier === activeSupplierTab);
 
   // Stepper adjuster
@@ -52,8 +51,13 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
     });
   };
 
-  // WhatsApp order dispatch generator
-  const handleSendWhatsApp = (order: Order) => {
+  const getSupplierPhone = (sup: Supplier) => {
+    return sup === 'SAB' ? settings.supplier_sab_phone : settings.supplier_heineken_phone;
+  };
+
+  // Build formatted order text per user prompt F4:
+  // "Hi, Cecil's Pub here. Order: 5 × Castle 750ml (12s), 4 × Black Label 750ml (12s). Delivery: Skylab St, Tlamatlama Ext, Tembisa."
+  const buildOrderText = (order: Order): string => {
     const items = editingOrders[order.id] || order.items;
     const activeItems = items.filter((it) => it.ordered_cases > 0);
 
@@ -61,24 +65,30 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
       .map((it) => `${it.ordered_cases} × ${it.product_name}`)
       .join(', ');
 
-    const message = `Hi, Cecil's Pub here. Order: ${itemsText}. Delivery to ${settings.address}.`;
-    const targetPhone =
-      order.supplier === 'SAB'
-        ? settings.supplier_sab_phone
-        : settings.supplier_heineken_phone;
+    return `Hi, Cecil's Pub here. Order: ${itemsText}. Delivery: ${settings.address}.`;
+  };
+
+  // F4: WhatsApp order dispatch with phone numbers from settings & mark sent with date/time
+  const handleSendWhatsApp = (order: Order) => {
+    const items = editingOrders[order.id] || order.items;
+    const message = buildOrderText(order);
+    const targetPhone = getSupplierPhone(order.supplier);
 
     const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
+    const now = new Date();
+    const formattedDate = `${now.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}, ${now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+    setSentTimestamps((prev) => ({
+      ...prev,
+      [order.id]: formattedDate,
+    }));
+
     onUpdateOrderStatus(order.id, 'sent', items);
     triggerSuccessBurst();
 
-    // Open WhatsApp link in new tab
     window.open(waUrl, '_blank');
-  };
-
-  const getSupplierPhone = (sup: Supplier) => {
-    return sup === 'SAB' ? settings.supplier_sab_phone : settings.supplier_heineken_phone;
   };
 
   return (
@@ -100,82 +110,163 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
         </div>
       </div>
 
-      {/* TWO LARGE ONE-TAP SUPPLIER CARDS (SAB & Heineken) */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* F4: TWO LARGE ONE-TAP SUPPLIER CARDS (SAB & Heineken) WITH SEND & CALL ACTIONS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* SAB Card */}
-        <div
-          onClick={() => setActiveSupplierTab('SAB')}
-          className={`rounded-2xl p-4 transition-all border cursor-pointer ${
-            activeSupplierTab === 'SAB'
-              ? 'bg-[#0A4A35] text-white border-[#0A4A35] shadow-md ring-2 ring-[#1D9E75]/50'
-              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-extrabold text-base tracking-tight">SAB Depot</span>
-            <Truck
-              className={`w-4 h-4 ${
-                activeSupplierTab === 'SAB' ? 'text-[#EF9F27]' : 'text-[#0F6E56]'
+        {(() => {
+          const sabOrder = orders.find((o) => o.supplier === 'SAB');
+          const isSent = sabOrder?.status === 'sent' || Boolean(sentTimestamps[sabOrder?.id || '']);
+          const sentLabel = sentTimestamps[sabOrder?.id || ''] || 'Today';
+
+          return (
+            <div
+              className={`rounded-2xl p-4 transition-all border ${
+                activeSupplierTab === 'SAB'
+                  ? 'bg-[#0A4A35] text-white border-[#0A4A35] shadow-md ring-2 ring-[#1D9E75]/50'
+                  : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
               }`}
-            />
-          </div>
-          <p
-            className={`text-xs ${
-              activeSupplierTab === 'SAB' ? 'text-emerald-200' : 'text-slate-500'
-            }`}
-          >
-            Castle, Black Label, Milk Stout
-          </p>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-bold">
-            <span
-              className={
-                activeSupplierTab === 'SAB' ? 'text-emerald-300' : 'text-[#0F6E56]'
-              }
             >
-              Order: Sundays 18:00
-            </span>
-          </div>
-        </div>
+              <div
+                onClick={() => setActiveSupplierTab('SAB')}
+                className="cursor-pointer select-none"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-base tracking-tight">SAB Depot</span>
+                    {isSent ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400 text-emerald-950">
+                        Sent {sentLabel} ✓
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EF9F27] text-[#111F1A]">
+                        Draft Ready
+                      </span>
+                    )}
+                  </div>
+                  <Truck
+                    className={`w-4 h-4 ${
+                      activeSupplierTab === 'SAB' ? 'text-[#EF9F27]' : 'text-[#0F6E56]'
+                    }`}
+                  />
+                </div>
+
+                <p
+                  className={`text-xs ${
+                    activeSupplierTab === 'SAB' ? 'text-emerald-200' : 'text-slate-500'
+                  }`}
+                >
+                  Castle, Black Label, Milk Stout • Tel: {settings.supplier_sab_phone}
+                </p>
+              </div>
+
+              {/* Direct Quick Supplier Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/15">
+                {sabOrder ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSupplierTab('SAB');
+                      handleSendWhatsApp(sabOrder);
+                    }}
+                    className="h-10 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.97] transition-transform duration-150 cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-white stroke-none" />
+                    <span>WhatsApp</span>
+                  </button>
+                ) : null}
+
+                <a
+                  href={`tel:${settings.supplier_sab_phone}`}
+                  className="h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.97] transition-transform duration-150"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Call SAB</span>
+                </a>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Heineken Card */}
-        <div
-          onClick={() => setActiveSupplierTab('Heineken')}
-          className={`rounded-2xl p-4 transition-all border cursor-pointer ${
-            activeSupplierTab === 'Heineken'
-              ? 'bg-[#0A4A35] text-white border-[#0A4A35] shadow-md ring-2 ring-[#1D9E75]/50'
-              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-extrabold text-base tracking-tight">Heineken</span>
-            <Truck
-              className={`w-4 h-4 ${
-                activeSupplierTab === 'Heineken' ? 'text-[#EF9F27]' : 'text-emerald-600'
+        {(() => {
+          const heinekenOrder = orders.find((o) => o.supplier === 'Heineken');
+          const isSent =
+            heinekenOrder?.status === 'sent' || Boolean(sentTimestamps[heinekenOrder?.id || '']);
+          const sentLabel = sentTimestamps[heinekenOrder?.id || ''] || 'Today';
+
+          return (
+            <div
+              className={`rounded-2xl p-4 transition-all border ${
+                activeSupplierTab === 'Heineken'
+                  ? 'bg-[#0A4A35] text-white border-[#0A4A35] shadow-md ring-2 ring-[#1D9E75]/50'
+                  : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300'
               }`}
-            />
-          </div>
-          <p
-            className={`text-xs ${
-              activeSupplierTab === 'Heineken' ? 'text-emerald-200' : 'text-slate-500'
-            }`}
-          >
-            Heineken, Amstel, Sol
-          </p>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-bold">
-            <span
-              className={
-                activeSupplierTab === 'Heineken' ? 'text-emerald-300' : 'text-[#0F6E56]'
-              }
             >
-              Delivery: Wednesdays
-            </span>
-          </div>
-        </div>
+              <div
+                onClick={() => setActiveSupplierTab('Heineken')}
+                className="cursor-pointer select-none"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-base tracking-tight">Heineken</span>
+                    {isSent ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400 text-emerald-950">
+                        Sent {sentLabel} ✓
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EF9F27] text-[#111F1A]">
+                        Draft Ready
+                      </span>
+                    )}
+                  </div>
+                  <Truck
+                    className={`w-4 h-4 ${
+                      activeSupplierTab === 'Heineken' ? 'text-[#EF9F27]' : 'text-emerald-600'
+                    }`}
+                  />
+                </div>
+
+                <p
+                  className={`text-xs ${
+                    activeSupplierTab === 'Heineken' ? 'text-emerald-200' : 'text-slate-500'
+                  }`}
+                >
+                  Heineken, Amstel, Sol • Tel: {settings.supplier_heineken_phone}
+                </p>
+              </div>
+
+              {/* Direct Quick Supplier Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/15">
+                {heinekenOrder ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSupplierTab('Heineken');
+                      handleSendWhatsApp(heinekenOrder);
+                    }}
+                    className="h-10 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.97] transition-transform duration-150 cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-white stroke-none" />
+                    <span>WhatsApp</span>
+                  </button>
+                ) : null}
+
+                <a
+                  href={`tel:${settings.supplier_heineken_phone}`}
+                  className="h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.97] transition-transform duration-150"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Call</span>
+                </a>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ACTIVE SUPPLIER DRAFT ORDER CARD */}
       {activeOrder ? (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/90 space-y-4">
+        <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/90 space-y-4">
           {/* Order Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
@@ -185,12 +276,14 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
                 </h2>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    activeOrder.status === 'sent'
+                    activeOrder.status === 'sent' || Boolean(sentTimestamps[activeOrder.id])
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-amber-100 text-amber-900'
                   }`}
                 >
-                  {activeOrder.status === 'sent' ? 'Sent to Supplier ✓' : 'Auto Draft'}
+                  {activeOrder.status === 'sent' || Boolean(sentTimestamps[activeOrder.id])
+                    ? `Sent ${sentTimestamps[activeOrder.id] || '✓'}`
+                    : 'Auto Draft'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -198,14 +291,14 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
               </p>
             </div>
 
-            {/* Call Supplier Button */}
+            {/* F4: Direct Call Supplier Button */}
             <a
               href={`tel:${getSupplierPhone(activeSupplierTab)}`}
-              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 text-xs font-bold transition-colors"
-              title="Call Supplier"
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-[0.97]"
+              title={`Call ${activeSupplierTab}`}
             >
               <PhoneCall className="w-4 h-4 text-[#0F6E56]" />
-              <span className="hidden sm:inline">Call</span>
+              <span className="hidden sm:inline">Call Depot</span>
             </a>
           </div>
 
@@ -214,26 +307,27 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
             {(editingOrders[activeOrder.id] || activeOrder.items).map((item, idx) => (
               <div
                 key={item.product_id}
-                className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-1.5"
+                className="bg-slate-50 rounded-2xl p-3 border border-slate-200/80 space-y-1.5"
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-[#111810] leading-tight">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {/* F1: Product name wraps to two lines */}
+                    <h3 className="font-bold text-sm text-[#111810] line-clamp-2 break-words leading-tight">
                       {item.product_name}
                     </h3>
                     {item.reason && (
-                      <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                      <p className="text-[11px] text-emerald-700 font-medium mt-0.5 leading-snug">
                         💡 {item.reason}
                       </p>
                     )}
                   </div>
 
-                  {/* Stepper Controls */}
+                  {/* Stepper Controls with P3 feedback */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleAdjustCases(activeOrder.id, idx, -1)}
-                      className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 flex items-center justify-center font-bold active:scale-95 shadow-2xs"
+                      className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 flex items-center justify-center font-bold active:scale-[0.97] transition-transform shadow-2xs"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
@@ -245,7 +339,7 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAdjustCases(activeOrder.id, idx, 1)}
-                      className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 flex items-center justify-center font-bold active:scale-95 shadow-2xs"
+                      className="w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 flex items-center justify-center font-bold active:scale-[0.97] transition-transform shadow-2xs"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -258,30 +352,25 @@ export const OrderBuilder: React.FC<OrderBuilderProps> = ({
           {/* Total & WhatsApp Action Button */}
           <div className="pt-2 space-y-2.5">
             {/* WhatsApp Pre-written Message Preview */}
-            <div className="bg-emerald-50/70 rounded-xl p-3 border border-emerald-200 text-xs text-[#0A4A35]">
-              <span className="font-bold block mb-1">Pre-written WhatsApp message:</span>
+            <div className="bg-emerald-50/70 rounded-2xl p-3 border border-emerald-200 text-xs text-[#0A4A35]">
+              <span className="font-bold block mb-1">Pre-written order text:</span>
               <p className="italic text-slate-700 text-[11px] leading-relaxed">
-                &ldquo;Hi, Cecil&apos;s Pub here. Order:{' '}
-                {(editingOrders[activeOrder.id] || activeOrder.items)
-                  .filter((it) => it.ordered_cases > 0)
-                  .map((it) => `${it.ordered_cases} × ${it.product_name}`)
-                  .join(', ')}
-                . Delivery to {settings.address}.&rdquo;
+                &ldquo;{buildOrderText(activeOrder)}&rdquo;
               </p>
             </div>
 
-            {/* Big Send via WhatsApp Button */}
+            {/* F4: Big Send via WhatsApp Button with P3 feedback */}
             <button
               onClick={() => handleSendWhatsApp(activeOrder)}
-              className="w-full h-14 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-extrabold text-base shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-14 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-extrabold text-base shadow-md active:scale-[0.97] transition-transform duration-150 flex items-center justify-center gap-2 cursor-pointer"
             >
               <MessageCircle className="w-5 h-5 fill-white stroke-none" />
-              <span>Send Order via WhatsApp</span>
+              <span>Send via WhatsApp</span>
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
+        <div className="bg-white rounded-3xl p-8 text-center border border-slate-200">
           <p className="text-sm text-slate-500 font-medium">
             No active draft orders for {activeSupplierTab}. All stock levels healthy.
           </p>

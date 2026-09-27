@@ -2,14 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
   Sparkles,
-  Bot,
-  User,
   CheckCheck,
   Beer,
-  RefreshCw,
 } from 'lucide-react';
 import { AIMessage, Product, Discrepancy, Order } from '../types/pub';
-import { formatTime } from '../lib/format';
+import { formatRand, formatTime } from '../lib/format';
 
 interface AIAssistantProps {
   messages: AIMessage[];
@@ -20,6 +17,7 @@ interface AIAssistantProps {
   onSendMessage: (role: 'user' | 'assistant', content: string) => void;
 }
 
+// F1: Full text on suggestion chips (no cut-off or truncating)
 const SUGGESTED_CHIPS = [
   'How many Black Labels do I have?',
   'What must I order for Monday?',
@@ -38,16 +36,40 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 }) => {
   const [inputText, setInputText] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const totalWarehouseCases = products.reduce((acc, p) => acc + p.warehouse_stock, 0);
+
+  // P5: Personalized live greeting message
+  const personalizedGreeting = `Howzit Cecil 👋 You've got ${totalWarehouseCases} cases in the warehouse and ${formatRand(
+    todaySalesTotal
+  )} in the till today.`;
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages, isTyping, streamingText]);
+
+  // Stream text word by word for real-time live feeling
+  const streamResponse = async (fullReply: string) => {
+    const words = fullReply.split(' ');
+    let current = '';
+    setStreamingText('');
+
+    for (let i = 0; i < words.length; i++) {
+      current += (i === 0 ? '' : ' ') + words[i];
+      setStreamingText(current);
+      await new Promise((resolve) => setTimeout(resolve, 24));
+    }
+
+    setStreamingText(null);
+    onSendMessage('assistant', fullReply);
+  };
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || inputText;
-    if (!text.trim()) return;
+    if (!text.trim() || isTyping || streamingText !== null) return;
 
     // Add user message
     onSendMessage('user', text.trim());
@@ -93,21 +115,21 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
       });
 
       const data = await res.json();
-      const reply = data.reply || "Howzit Cecil, all tavern numbers looking sharp!";
-      onSendMessage('assistant', reply);
+      const reply = data.reply || 'Howzit Cecil, all tavern numbers looking sharp!';
+      setIsTyping(false);
+      await streamResponse(reply);
     } catch (err) {
       console.error('AI chat error:', err);
+      setIsTyping(false);
       onSendMessage(
         'assistant',
         "Howzit Cecil, network had a hiccup! Your tavern stock is safely recorded offline in Tembisa. Ask me again in a sec."
       );
-    } finally {
-      setIsTyping(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] bg-[#EFEAE2] rounded-2xl shadow-sm border border-slate-300/80 overflow-hidden animate-fadeIn">
+    <div className="flex flex-col h-[calc(100vh-140px)] bg-[#EFEAE2] rounded-3xl shadow-sm border border-slate-300/80 overflow-hidden animate-fadeIn">
       {/* WhatsApp Styled Chat Header */}
       <div className="bg-[#075E54] text-white px-4 py-3 flex items-center justify-between select-none shadow-sm">
         <div className="flex items-center gap-3">
@@ -147,7 +169,23 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
           </span>
         </div>
 
-        {messages.map((msg) => {
+        {/* P5: Personalized Greeting Bubble if starting chat */}
+        <div className="flex justify-start">
+          <div className="relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 shadow-xs text-[14px] leading-relaxed select-text bg-white text-[#111810] rounded-tl-none border border-slate-100">
+            <p className="font-semibold text-emerald-950 mb-1">
+              {personalizedGreeting}
+            </p>
+            <p className="text-slate-700 text-xs">
+              I&apos;m watching your stock across warehouse and floor bar. What do you need to check?
+            </p>
+            <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400 font-mono">
+              <span>{formatTime()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Conversation messages */}
+        {messages.slice(1).map((msg) => {
           const isUser = msg.role === 'user';
           return (
             <div
@@ -176,10 +214,22 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
           );
         })}
 
-        {/* Typing Indicator */}
+        {/* P5: Streaming active bubble */}
+        {streamingText !== null && (
+          <div className="flex justify-start">
+            <div className="relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 shadow-xs text-[14px] leading-relaxed select-text bg-white text-[#111810] rounded-tl-none border border-slate-100">
+              <div className="whitespace-pre-wrap">{streamingText}</div>
+              <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400 font-mono">
+                <span>{formatTime()}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* P5: Typing Indicator with three animated bouncing dots */}
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-white rounded-2xl rounded-tl-none p-3 shadow-xs border border-slate-100 flex items-center gap-1.5">
+            <div className="bg-white rounded-2xl rounded-tl-none px-3.5 py-2.5 shadow-xs border border-slate-100 flex items-center gap-1.5">
               <span className="text-xs text-slate-500 font-medium mr-1">
                 Cecil&apos;s AI is thinking
               </span>
@@ -193,13 +243,13 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Quick Chips */}
-      <div className="px-3 pt-2 pb-1 bg-[#F0F2F5] border-t border-slate-200 overflow-x-auto no-scrollbar flex gap-1.5 shrink-0">
+      {/* F1: Suggested Quick Chips with full text & horizontal scroll (no truncation) */}
+      <div className="px-3 pt-2 pb-1.5 bg-[#F0F2F5] border-t border-slate-200 overflow-x-auto no-scrollbar flex gap-2 shrink-0">
         {SUGGESTED_CHIPS.map((chip, i) => (
           <button
             key={i}
             onClick={() => handleSend(chip)}
-            className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0A4A35] border border-slate-300/80 rounded-full text-xs font-semibold whitespace-nowrap shadow-2xs transition-all active:scale-95"
+            className="px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0A4A35] border border-slate-300/80 rounded-full text-xs font-semibold whitespace-nowrap shadow-2xs transition-all active:scale-[0.97] shrink-0"
           >
             {chip}
           </button>
@@ -221,8 +271,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
         <button
           onClick={() => handleSend()}
-          disabled={!inputText.trim() || isTyping}
-          className="w-11 h-11 rounded-full bg-[#075E54] hover:bg-[#128C7E] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer shrink-0"
+          disabled={!inputText.trim() || isTyping || streamingText !== null}
+          className="w-11 h-11 rounded-full bg-[#075E54] hover:bg-[#128C7E] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-[0.97] transition-all cursor-pointer shrink-0"
           aria-label="Send message"
         >
           <Send className="w-5 h-5 ml-0.5" />
